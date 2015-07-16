@@ -10,15 +10,15 @@ area = document.querySelector('textarea');
 loader = document.getElementById('loader');
 
 render = function() {
-  var currentLevel, xml;
+  var xml;
   preview.innerHTML = marked(this.value);
-  currentLevel = 0;
+  window.currentLevel = 0;
   xml = '<section>' + marked(this.value, {
     renderer: renderer
   });
-  while (currentLevel >= 0) {
+  while (window.currentLevel >= 0) {
     xml += '</section>';
-    currentLevel--;
+    window.currentLevel--;
   }
   return code.innerText = code.textContent = vkbeautify.xml(xml);
 };

@@ -5,11 +5,11 @@ loader = document.getElementById('loader')
 
 render = ->
     preview.innerHTML = marked @value
-    currentLevel = 0
+    window.currentLevel = 0
     xml = '<section>' + marked @value, renderer: renderer
-    while currentLevel >= 0
+    while window.currentLevel >= 0
         xml += '</section>'
-        currentLevel--
+        window.currentLevel--
 
     code.innerText = code.textContent = vkbeautify.xml xml
 
