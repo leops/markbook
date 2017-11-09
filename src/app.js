@@ -86,6 +86,7 @@ const Result = styled.div`
     flex: 1;
     display: flex;
     flex-direction: column;
+    max-width: 40%;
 
     & > * {
         padding: 20px;
@@ -218,7 +219,7 @@ export default class App extends React.Component {
         const { initialRender, value } = this.state;
 
         const renderer = new Renderer();
-        let xml = `<?xml version="1.0" encoding="UTF-8"?>\n<section>${marked(value, {renderer})}`;
+        let xml = `<?xml version="1.0" encoding="UTF-8"?>\n${marked(value, {renderer})}`;
         while (renderer.currentLevel >= 0) {
             xml += '</section>';
             renderer.currentLevel--;

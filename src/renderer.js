@@ -1,16 +1,21 @@
 import { Renderer } from 'marked';
 
 export default class DocbookRenderer extends Renderer {
-    currentLevel = 0
+    currentLevel = -1
     heading(text, level) {
+        let targetLevel = level;
+        if(this.currentLevel === -1 && level === 1) {
+            targetLevel = 0;
+        }
+
         let section = '';
-        if (level > this.currentLevel) {
-            while (this.currentLevel < level) {
+        if (targetLevel > this.currentLevel) {
+            while (this.currentLevel < targetLevel) {
                 section += '<section>';
                 this.currentLevel++;
             }
-        } else if (level < this.currentLevel) {
-            while (this.currentLevel > level) {
+        } else if (targetLevel < this.currentLevel) {
+            while (this.currentLevel > targetLevel) {
                 section += '</section>';
                 this.currentLevel--;
             }
