@@ -3,8 +3,8 @@ const StaticSiteGeneratorPlugin = require('static-site-generator-webpack-plugin'
 
 module.exports = {
     entry: {
-        bundle: './src/index.js',
-        build: './src/build.js',
+        bundle: ['babel-polyfill', './src/index.js'],
+        build: ['babel-polyfill', './src/build.js'],
     },
     devtool: 'inline-source-map',
 

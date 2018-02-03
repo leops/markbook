@@ -5,8 +5,19 @@ import Icon from 'react-fontawesome';
 
 import marked from 'marked';
 import vkbeautify from 'vkbeautify';
+import Viz from 'viz.js';
 
 import Renderer from './renderer';
+
+const svgXmlToPngBase64 = (svgXml, scale) => new Promise((resolve, reject) => {
+    Viz.svgXmlToPngBase64(svgXml, scale, (err, res) => {
+        if(err) {
+            reject(err);
+        } else {
+            resolve(res);
+        }
+    });
+});
 
 injectGlobal`
     html, body, main, main > div {
@@ -106,12 +117,15 @@ const Code = styled.code`
     min-height: 0;
 `;
 
+const TEST_DOT = /\{%\s*dot((.|\r|\n)+?)%\}/m;
+
 export default class App extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
             initialRender: true,
             value: '# hello',
+            valueDot: null,
         };
 
         this.onDragOver = evt => {
@@ -140,11 +154,35 @@ export default class App extends React.Component {
         };
     }
 
+    async componentDidUpdate(prevProps, prevState) {
+        if(prevState.value !== this.state.value) {
+            let { value } = this.state;
+
+            let pos = value.search(TEST_DOT);
+            while(pos >= 0) {
+                const [substr, content] = value.match(TEST_DOT);
+
+                const result = Viz(content);
+                const data = await svgXmlToPngBase64(result, undefined);
+
+                value = `${value.substr(0, pos)}![${content}](data:image/png;base64,${data})${value.substr(pos + substr.length)}`;
+                pos = value.search(TEST_DOT);
+            }
+
+            this.setState(state => ({
+                initialRender: state.initialRender,
+                value: state.value,
+                valueDot: value,
+            }));
+        }
+    }
+
     setValue(value) {
-        this.setState({
+        this.setState(state => ({
+            valueDot: state.valueDot,
             initialRender: false,
             value,
-        });
+        }));
     }
 
     handleRef(name) {
@@ -169,6 +207,7 @@ export default class App extends React.Component {
                 state => ({
                     initialRender: false,
                     value: state.value.slice(0, start) + result.insert + state.value.slice(end),
+                    valueDot: state.valueDot,
                 }),
                 () => {
                     this.area.focus();
@@ -242,9 +281,10 @@ export default class App extends React.Component {
 
     render() {
         const { initialRender, value } = this.state;
+        const valueDot = this.state.valueDot || this.state.value;
 
         const renderer = new Renderer();
-        let xml = `<?xml version="1.0" encoding="UTF-8"?>\n${marked(value, {renderer})}`;
+        let xml = `<?xml version="1.0" encoding="UTF-8"?>\n${marked(valueDot, {renderer})}`;
         while (renderer.currentLevel >= 0) {
             xml += '</section>';
             renderer.currentLevel--;
@@ -333,7 +373,7 @@ export default class App extends React.Component {
                         onDrop={this.onDrop}
                         innerRef={this.handleRef('area')} />
                     <Result>
-                        <Preview dangerouslySetInnerHTML={{ __html: marked(value) }} />
+                        <Preview dangerouslySetInnerHTML={{ __html: marked(valueDot) }} />
                         <Code>{code}</Code>
                     </Result>
                 </Editor>
