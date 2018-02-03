@@ -113,6 +113,31 @@ export default class App extends React.Component {
             initialRender: true,
             value: '# hello',
         };
+
+        this.onDragOver = evt => {
+            evt.preventDefault();
+        };
+        this.onDrop = evt => {
+            evt.preventDefault();
+            const { files, items } = evt.dataTransfer;
+            const data = items ?
+                Array.from(items).map(item => item.getAsFile()) :
+                Array.from(files);
+
+            for(const file of data) {
+                if(file.type.split('/')[0] === 'image') {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    reader.onload = () => {
+                        this.handleAction(r => {
+                            r.insert = `![text](${reader.result})`;
+                            r.start += 2;
+                            r.end = r.start + 4;
+                        })();
+                    };
+                }
+            }
+        };
     }
 
     setValue(value) {
@@ -129,7 +154,7 @@ export default class App extends React.Component {
     }
 
     handleAction(action) {
-        return evt => {
+        return () => {
             const start = this.area.selectionStart;
             const end = this.area.selectionEnd;
             const result = {
@@ -225,7 +250,7 @@ export default class App extends React.Component {
             renderer.currentLevel--;
         }
 
-        const code = vkbeautify.xml(xml);
+        const code = vkbeautify.xml(xml).replace(/^\s+<!\[CDATA\[/mg, '<![CDATA[');
 
         let codeFile = '#';
         let valueFile = '#';
@@ -304,6 +329,8 @@ export default class App extends React.Component {
                     <Textarea
                         value={value}
                         onChange={evt => this.setValue(evt.target.value)}
+                        onDragOver={this.onDragOver}
+                        onDrop={this.onDrop}
                         innerRef={this.handleRef('area')} />
                     <Result>
                         <Preview dangerouslySetInnerHTML={{ __html: marked(value) }} />
