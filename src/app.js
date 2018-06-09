@@ -155,12 +155,16 @@ const extYouTube = extension('youtube', url => (
 export default class App extends React.Component {
     state = {
         initialRender: true,
-        value: (typeof localStorage !== 'undefined' && localStorage['__markbook_save']) || '# hello',
+        value: '# hello',
         valueDot: null,
         length: 0,
     }
 
     componentDidMount() {
+        if(typeof localStorage !== 'undefined') {
+            this.setState({ value: localStorage['__markbook_save'] });
+        }
+
         this.updateAsync(null);
     }
     
@@ -168,7 +172,7 @@ export default class App extends React.Component {
         this.updateAsync(prevState.value);
         
         if(this.preview) {
-            const { length } = this.preview.textContent;
+            const { length } = this.preview.textContent || this.preview.innerText;
             if(this.state.length !== length) {
                 this.setState({ length });
             }
@@ -372,7 +376,8 @@ export default class App extends React.Component {
                             <Icon name="folder-open" />
                             <input type="file"
                                 ref={this.handleRef('loader')}
-                                onChange={this.onLoadFile.bind(this)} />
+                                onChange={this.onLoadFile.bind(this)}
+                                autoComplete="off" />
                         </Button>
                         <a className={button} href={valueFile} title="Save">
                             <Icon name="save" />
