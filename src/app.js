@@ -41,6 +41,8 @@ injectGlobal`
 `;
 
 const Menu = styled.div`
+    display: flex;
+    flex-direction: row;
     background: #4A4A4A;
 `;
 
@@ -117,63 +119,100 @@ const Code = styled.code`
     min-height: 0;
 `;
 
-const TEST_DOT = /\{%\s*dot((.|\r|\n)+?)%\}/m;
+const Counter = styled.div`
+    margin: 5px 9px;
+    display: inline-block;
+    color: #ddd;
+    align-self: center;
+    flex: 1;
+    text-align: right;
+`;
+
+function extension(filter, transform) {
+    const test = new RegExp(`\\{%\\s*${filter}((.|\\r|\\n)+?)%\\}`, 'm');
+    return async value => {
+        let pos = value.search(test);
+        while(pos >= 0) {
+            const [substr, content] = value.match(test);
+            const res = await transform(content);
+            value = value.substr(0, pos) + res + value.substr(pos + substr.length);
+            pos = value.search(test);
+        }
+
+        return value;
+    };
+}
+
+const extDot = extension('dot', async content => {
+    const result = Viz(content);
+    const data = await svgXmlToPngBase64(result, undefined);
+    return `![${content}](data:image/png;base64,${data})`;
+});
+const extYouTube = extension('youtube', url => (
+    `<videodata fileref="${url}" />`
+));
 
 export default class App extends React.Component {
-    constructor(props) {
-        super(props);
-        this.state = {
-            initialRender: true,
-            value: '# hello',
-            valueDot: null,
-        };
-
-        this.onDragOver = evt => {
-            evt.preventDefault();
-        };
-        this.onDrop = evt => {
-            evt.preventDefault();
-            const { files, items } = evt.dataTransfer;
-            const data = items ?
-                Array.from(items).map(item => item.getAsFile()) :
-                Array.from(files);
-
-            for(const file of data) {
-                if(file.type.split('/')[0] === 'image') {
-                    const reader = new FileReader();
-                    reader.readAsDataURL(file);
-                    reader.onload = () => {
-                        this.handleAction(r => {
-                            r.insert = `![text](${reader.result})`;
-                            r.start += 2;
-                            r.end = r.start + 4;
-                        })();
-                    };
-                }
-            }
-        };
+    state = {
+        initialRender: true,
+        value: (typeof localStorage !== 'undefined' && localStorage['__markbook_save']) || '# hello',
+        valueDot: null,
+        length: 0,
     }
 
-    async componentDidUpdate(prevProps, prevState) {
-        if(prevState.value !== this.state.value) {
-            let { value } = this.state;
-
-            let pos = value.search(TEST_DOT);
-            while(pos >= 0) {
-                const [substr, content] = value.match(TEST_DOT);
-
-                const result = Viz(content);
-                const data = await svgXmlToPngBase64(result, undefined);
-
-                value = `${value.substr(0, pos)}![${content}](data:image/png;base64,${data})${value.substr(pos + substr.length)}`;
-                pos = value.search(TEST_DOT);
+    componentDidMount() {
+        this.updateAsync(null);
+    }
+    
+    componentDidUpdate(prevProps, prevState) {
+        this.updateAsync(prevState.value);
+        
+        if(this.preview) {
+            const { length } = this.preview.textContent;
+            if(this.state.length !== length) {
+                this.setState({ length });
             }
+        }
+    }
 
+    async updateAsync(prevValue) {
+        if(prevValue !== this.state.value) {
+            const { value } = this.state;
+            const valueYT = await extYouTube(value);
+            const valueDot = await extDot(valueYT);
             this.setState(state => ({
                 initialRender: state.initialRender,
                 value: state.value,
-                valueDot: value,
+                valueDot,
             }));
+
+            localStorage['__markbook_save'] = value;
+        }
+    }
+
+    onDragOver = evt => {
+        evt.preventDefault();
+    }
+
+    onDrop = evt => {
+        evt.preventDefault();
+        const { files, items } = evt.dataTransfer;
+        const data = items ?
+            Array.from(items).map(item => item.getAsFile()) :
+            Array.from(files);
+
+        for(const file of data) {
+            if(file.type.split('/')[0] === 'image') {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => {
+                    this.handleAction(r => {
+                        r.insert = `![text](${reader.result})`;
+                        r.start += 2;
+                        r.end = r.start + 4;
+                    })();
+                };
+            }
         }
     }
 
@@ -267,6 +306,16 @@ export default class App extends React.Component {
 
         r.end = r.start;
     }
+    onGraph(r) {
+        r.insert = '{% dot digraph G { a -> b; a -> c; b -> d; c -> d; } %}';
+        r.start += 19;
+        r.end = r.start + 31;
+    }
+    onYouTube(r) {
+        r.insert = '{% youtube https://www.youtube.com/embed/WiJYhL8hswY %}';
+        r.start += 41;
+        r.end = r.start + 11;
+    }
 
     onLoadFile(evt) {
         if (evt.target.files.length > 0) {
@@ -280,7 +329,7 @@ export default class App extends React.Component {
     }
 
     render() {
-        const { initialRender, value } = this.state;
+        const { initialRender, value, length } = this.state;
         const valueDot = this.state.valueDot || this.state.value;
 
         const renderer = new Renderer();
@@ -291,6 +340,7 @@ export default class App extends React.Component {
         }
 
         const code = vkbeautify.xml(xml).replace(/^\s+<!\[CDATA\[/mg, '<![CDATA[');
+        const html = marked(valueDot).replace(/<videodata fileref="(.+)" \/>/g, '<iframe src="$1"></iframe>');
 
         let codeFile = '#';
         let valueFile = '#';
@@ -363,7 +413,14 @@ export default class App extends React.Component {
                         <Button type="button" title="Separator" onClick={this.handleAction(this.onSeparator)}>
                             <Icon name="ellipsis-h" />
                         </Button>
+                        <Button type="button" title="Graph" onClick={this.handleAction(this.onGraph)}>
+                            <Icon name="bar-chart" />
+                        </Button>
+                        <Button type="button" title="YouTube" onClick={this.handleAction(this.onYouTube)}>
+                            <Icon name="youtube-play" />
+                        </Button>
                     </Group>
+                    <Counter>~{length} signs</Counter>
                 </Menu>
                 <Editor>
                     <Textarea
@@ -373,7 +430,7 @@ export default class App extends React.Component {
                         onDrop={this.onDrop}
                         innerRef={this.handleRef('area')} />
                     <Result>
-                        <Preview dangerouslySetInnerHTML={{ __html: marked(valueDot) }} />
+                        <Preview innerRef={elem => this.preview = elem} dangerouslySetInnerHTML={{ __html: html }} />
                         <Code>{code}</Code>
                     </Result>
                 </Editor>

@@ -28,7 +28,7 @@ export default class DocbookRenderer extends Renderer {
 
     code = (code, language) => `<programlisting language="${language}"><![CDATA[${code}]]></programlisting>`
     blockquote = quote => `<quote>${quote}</quote>`
-    html = html => this.code(html, 'html')
+    html = html => html
     hr = () => '</section><section>'
     list = (body, ordered) => `<itemizedlist>${body}</itemizedlist>`
     listitem = text => `<listitem>${text}</listitem>`
