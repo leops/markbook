@@ -155,7 +155,7 @@ const extYouTube = extension('youtube', url => (
 export default class App extends React.Component {
     state = {
         initialRender: true,
-        value: '# hello',
+        value: 'Title\n======\n\nContent',
         valueDot: null,
         length: 0,
     }
@@ -338,7 +338,7 @@ export default class App extends React.Component {
 
         const renderer = new Renderer();
         let xml = `<?xml version="1.0" encoding="UTF-8"?>\n${marked(valueDot, {renderer})}`;
-        while (renderer.currentLevel >= 0) {
+        while (renderer.currentLevel > -1) {
             xml += '</section>';
             renderer.currentLevel--;
         }

@@ -9,21 +9,23 @@ export default class DocbookRenderer extends Renderer {
         }
 
         let section = '';
-        if (targetLevel > this.currentLevel) {
-            while (this.currentLevel < targetLevel) {
+        if (this.currentLevel < targetLevel) {
+            while (this.currentLevel < targetLevel - 1) {
                 section += '<section>';
                 this.currentLevel++;
             }
-        } else if (targetLevel < this.currentLevel) {
-            while (this.currentLevel > targetLevel) {
+        } else if (this.currentLevel > targetLevel) {
+            while (this.currentLevel >= targetLevel) {
                 section += '</section>';
                 this.currentLevel--;
             }
         } else {
-            section += '</section><section>';
+            section += '</section>';
+            this.currentLevel--;
         }
 
-        return section + `<title>${text}</title>`;
+        this.currentLevel++;
+        return section + `<section><title>${text}</title>`;
     }
 
     code = (code, language) => `<programlisting language="${language}"><![CDATA[${code}]]></programlisting>`
